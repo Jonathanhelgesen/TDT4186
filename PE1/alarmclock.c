@@ -26,24 +26,21 @@ int main()
     char *currentTimeString = asctime(currentTime);
     printf("Welcome to the alarm clock! The current date and time is: %s\n", currentTimeString);
 
-    while (input != 'e')
+    while (input != 'x')
     {
         printf("--- Enter \"s\" (schedule), \"l\" (list), \"c\" (cancel) or \"x\" (exit): ---\n");
         char text[1];
         scanf(" %c", text);
         input = text[0];
         while (waitpid(-1, NULL, WNOHANG) > 0); // Removes zombie processes without blocking
-        
+
         if (input == 's')
         {
             printf("Schedule an alarm in the format \"dd/mm/yyyy-hh:mm:ss\":\n");
             char text[20];
             scanf(" %s", text);
-            if (text[0] == 'e')
-            {
-                input = 'e';
-                break;
-            }
+
+            // Process text information
             char day[3] = {text[0], text[1], '\0'};
             char month[3] = {text[3], text[4], '\0'};
             char year[5] = {text[6], text[7], text[8], text[9], '\0'};
@@ -61,8 +58,8 @@ int main()
             strftime(text, sizeof(text), "%d/%m/%Y %T", &newAlarmTime);
             time_t alarmTime = mktime(&newAlarmTime);
             printf("You scheduled an alarm at: %s, in %li seconds\n", text, alarmTime - time(NULL));
-            alarmNr++;
-            int fileDescriptor[2];
+            alarmNr++;             // Increments alarmNr for each alarm
+            int fileDescriptor[2]; // Pipe for communicating pid of child to parent
             if (pipe(fileDescriptor) == -1)
             {
                 printf("Error ocurred while trying to open pipe\n");
@@ -99,42 +96,47 @@ int main()
                 if (cancelNr == alarms[i].alarmdID)
                 {
                     kill(alarms[i].pid, SIGTERM);
-                    // alarms[i].isActive = 0;
                 }
             }
-        }
-        else if (input == 'e')
-        {
-            break;
         }
         else if (input == 'l')
         {
             printf("Your alarms:\n");
             for (int i = 0; i < sizeof(alarms); i++)
             {
+                // Check if alarm exists
                 if (alarms[i].alarmdID)
                 {
                     char text[20];
                     strftime(text, sizeof(text), "%d/%m/%Y %T", localtime(&alarms[i].alarmTime));
                     printf(" - Alarm %i at %s   ", alarms[i].alarmdID, text);
-                    int status;
-                    if (waitpid(alarms[i].pid, &status, WNOHANG) == 0) // When child process is running
+                    // Check if child process is running
+                    if (waitpid(alarms[i].pid, NULL, WNOHANG) == 0)
                     {
                         printf("(ACTIVE)\n");
                     }
-                    else // When process has stopped
+                    else
                     {
-                        printf("(CANCELED)\n");
+                        printf("(INACTIVE)\n");
                     }
                 }
             }
-            //input = 'c';
         }
     }
-    // Kill all child processes before ending the program
-    signal(SIGQUIT, SIG_IGN);
-    kill(0, SIGQUIT);
-    // Remove zombies
+    // Kill all running child processes before ending the program
+    for (int i = 0; i < sizeof(alarms); i++)
+    {
+        // Check if process exists in alarms[]
+        if (alarms[i].alarmdID)
+        {
+            // Check if process is running
+            if (waitpid(alarms[i].pid, NULL, WNOHANG) == 0)
+            {
+                kill(alarms[i].pid, SIGTERM);
+            }
+        }
+    }
+    // Remove potential zombies
     while (waitpid(-1, NULL, WNOHANG) > 0);
 
     return 0;
