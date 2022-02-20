@@ -33,7 +33,6 @@ int main()
         scanf(" %c", text);
         input = text[0];
         while (waitpid(-1, NULL, WNOHANG) > 0); // Removes zombie processes without blocking
-        //char text[20] = {'1','9','/','0','2','/','2','0','2','2','-','1','0',':','5','3',':','0','5','\0'};
         
         if (input == 's')
         {
@@ -135,6 +134,8 @@ int main()
     // Kill all child processes before ending the program
     signal(SIGQUIT, SIG_IGN);
     kill(0, SIGQUIT);
+    // Remove zombies
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 
     return 0;
 }
