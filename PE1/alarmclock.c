@@ -14,6 +14,22 @@ struct Alarm
 
 struct Alarm alarms[10];
 
+void setAlarm(time_t *alarmTime, int *alarmNr)
+{
+    printf("Schedule an alarm in the format \"dd/mm/yyyy-hh:mm:ss\":\n");
+    char text[20];
+    scanf(" %s", text);
+
+    struct tm newAlarmTime;
+    strptime(text, "%d/%m/%Y-%T", &newAlarmTime);
+    *alarmTime = mktime(&newAlarmTime);
+
+    printf("You scheduled an alarm at: %s, in %li seconds\n", text, *alarmTime - time(NULL));
+    (*alarmNr)++; // Increments alarmNr for each alarm
+
+    return;
+}
+
 int main()
 {
 
@@ -32,33 +48,15 @@ int main()
         char text[1];
         scanf(" %c", text);
         input = text[0];
-        while (waitpid(-1, NULL, WNOHANG) > 0); // Removes zombie processes without blocking
+        while (waitpid(-1, NULL, WNOHANG) > 0)
+            ; // Removes zombie processes without blocking
 
         if (input == 's')
         {
-            printf("Schedule an alarm in the format \"dd/mm/yyyy-hh:mm:ss\":\n");
-            char text[20];
-            scanf(" %s", text);
 
-            // Process text information
-            char day[3] = {text[0], text[1], '\0'};
-            char month[3] = {text[3], text[4], '\0'};
-            char year[5] = {text[6], text[7], text[8], text[9], '\0'};
-            char hour[3] = {text[11], text[12], '\0'};
-            char minute[3] = {text[14], text[15], '\0'};
-            char second[3] = {text[17], text[18], '\0'};
-            struct tm newAlarmTime = {
-                .tm_mday = atoi(day),
-                .tm_mon = atoi(month) - 1,
-                .tm_year = atoi(year) - 1900,
-                .tm_hour = atoi(hour),
-                .tm_min = atoi(minute),
-                .tm_sec = atoi(second),
-            };
-            strftime(text, sizeof(text), "%d/%m/%Y %T", &newAlarmTime);
-            time_t alarmTime = mktime(&newAlarmTime);
-            printf("You scheduled an alarm at: %s, in %li seconds\n", text, alarmTime - time(NULL));
-            alarmNr++;             // Increments alarmNr for each alarm
+            time_t alarmTime;
+            setAlarm(&alarmTime, &alarmNr);
+
             int fileDescriptor[2]; // Pipe for communicating pid of child to parent
             if (pipe(fileDescriptor) == -1)
             {
@@ -137,7 +135,8 @@ int main()
         }
     }
     // Remove potential zombies
-    while (waitpid(-1, NULL, WNOHANG) > 0);
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+        ;
 
     return 0;
 }
