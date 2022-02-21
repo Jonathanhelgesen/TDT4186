@@ -14,7 +14,7 @@ struct Alarm
 
 struct Alarm alarms[10];
 
-void setAlarm(time_t *alarmTime, int *alarmNr)
+struct Alarm setAlarm(int *alarmNr)
 {
     printf("Schedule an alarm in the format \"dd/mm/yyyy-hh:mm:ss\":\n");
     char text[20];
@@ -22,19 +22,47 @@ void setAlarm(time_t *alarmTime, int *alarmNr)
 
     struct tm newAlarmTime;
     strptime(text, "%d/%m/%Y-%T", &newAlarmTime);
-    *alarmTime = mktime(&newAlarmTime);
+    time_t alarmTime = mktime(&newAlarmTime);
 
-    printf("You scheduled an alarm at: %s, in %li seconds\n", text, *alarmTime - time(NULL));
+    printf("You scheduled an alarm at: %s, in %li seconds\n", text, alarmTime - time(NULL));
     (*alarmNr)++; // Increments alarmNr for each alarm
 
-    return;
+    int fileDescriptor[2]; // Pipe for communicating pid of child to parent
+    if (pipe(fileDescriptor) == -1)
+    {
+        printf("Error ocurred while trying to open pipe\n");
+        // return 1;
+    }
+    int isMain = fork();
+    if (!isMain)
+    {
+        int pid = getpid();
+        close(fileDescriptor[0]);
+        write(fileDescriptor[1], &pid, sizeof(int));
+        close(fileDescriptor[1]);
+        sleep(alarmTime - time(NULL));
+        printf("[Alarm %i: \"RINGGGG\"]\n", *alarmNr);
+        system("afplay alarm.mp3 -v 1");
+        exit(0);
+    }
+    close(fileDescriptor[1]);
+    int pid;
+    read(fileDescriptor[0], &pid, sizeof(int));
+    close(fileDescriptor[0]);
+
+    struct Alarm newAlarm = {
+        .alarmdID = *alarmNr,
+        .alarmTime = alarmTime,
+        .pid = pid};
+    
+    return newAlarm;
 }
 
 int main()
 {
 
     char input;
-    int isMain = 1;  // identifier of main process (children will be 0)
+    // int isMain = 1;  // identifier of main process (children will be 0)
     int alarmNr = 0; // For incrementing the number/ID of the alarms
 
     time_t now = time(NULL);
@@ -53,35 +81,7 @@ int main()
 
         if (input == 's')
         {
-
-            time_t alarmTime;
-            setAlarm(&alarmTime, &alarmNr);
-
-            int fileDescriptor[2]; // Pipe for communicating pid of child to parent
-            if (pipe(fileDescriptor) == -1)
-            {
-                printf("Error ocurred while trying to open pipe\n");
-                return 1;
-            }
-            isMain = fork();
-            if (!isMain)
-            {
-                int pid = getpid();
-                close(fileDescriptor[0]);
-                write(fileDescriptor[1], &pid, sizeof(int));
-                close(fileDescriptor[1]);
-                sleep(alarmTime - time(NULL));
-                printf("[Alarm %i: \"RINGGGG\"]\n", alarmNr);
-                exit(0);
-            }
-            close(fileDescriptor[1]);
-            int pid;
-            read(fileDescriptor[0], &pid, sizeof(int));
-            close(fileDescriptor[0]);
-            struct Alarm newAlarm = {
-                .alarmdID = alarmNr,
-                .alarmTime = alarmTime,
-                .pid = pid};
+            struct Alarm newAlarm = setAlarm(&alarmNr);
             alarms[alarmNr - 1] = newAlarm;
         }
         else if (input == 'c')
