@@ -42,7 +42,7 @@ struct Alarm setAlarm(int *alarmNr)
         close(fileDescriptor[1]);
         sleep(alarmTime - time(NULL));
         printf("[Alarm %i: \"RINGGGG\"]\n", *alarmNr);
-        system("afplay alarm.mp3 -v 1");
+        system("afplay alarm.mp3 -v 1"); // Play sound on Mac, comment out if not working
         exit(0);
     }
     close(fileDescriptor[1]);
