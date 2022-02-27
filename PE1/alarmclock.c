@@ -37,17 +37,17 @@ struct Alarm setAlarm(int *alarmNr)
     if (!isMain)
     {
         int pid = getpid();
-        close(fileDescriptor[0]);
-        write(fileDescriptor[1], &pid, sizeof(int));
+        close(fileDescriptor[0]); // Closes read
+        write(fileDescriptor[1], &pid, sizeof(int)); // Writes pid
         close(fileDescriptor[1]);
-        sleep(alarmTime - time(NULL));
+        sleep(alarmTime - time(NULL)); // Waits till the alarm time
         printf("[Alarm %i: \"RINGGGG\"]\n", *alarmNr);
         system("afplay alarm.mp3 -v 1"); // Play sound on Mac, comment out if not working
         exit(0);
     }
-    close(fileDescriptor[1]);
+    close(fileDescriptor[1]); // Closes write
     int pid;
-    read(fileDescriptor[0], &pid, sizeof(int));
+    read(fileDescriptor[0], &pid, sizeof(int)); // Reads pid of child
     close(fileDescriptor[0]);
 
     struct Alarm newAlarm = {
@@ -61,8 +61,7 @@ struct Alarm setAlarm(int *alarmNr)
 int main()
 {
 
-    char input;
-    // int isMain = 1;  // identifier of main process (children will be 0)
+    char input; // User input, either 's', 'l', 'c' or 'x'
     int alarmNr = 0; // For incrementing the number/ID of the alarms
 
     time_t now = time(NULL);
@@ -76,8 +75,7 @@ int main()
         char text[1];
         scanf(" %c", text);
         input = text[0];
-        while (waitpid(-1, NULL, WNOHANG) > 0)
-            ; // Removes zombie processes without blocking
+        while (waitpid(-1, NULL, WNOHANG) > 0); // Removes zombie processes without blocking
 
         if (input == 's')
         {
@@ -135,8 +133,7 @@ int main()
         }
     }
     // Remove potential zombies
-    while (waitpid(-1, NULL, WNOHANG) > 0)
-        ;
+    while (waitpid(-1, NULL, WNOHANG) > 0);
 
     return 0;
 }
