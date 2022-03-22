@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+
 #define MAXSIZE (8092 * 1024)
 #define PORT 8000
 
@@ -22,7 +23,7 @@ const char *parseRequest(char *request)
 {
     char *token;
     token = strtok(request, " ");
-    bzero(&request, sizeof(&request));
+    bzero(&request, sizeof(request));
     token = strtok(NULL, " ");
     if (token[0] == '/')
     {
@@ -114,10 +115,13 @@ int main()
 
         getHtml(path, htmlCode);
 
+
         // Generate response
-        snprintf(body, sizeof(body) + 86, "%s", htmlCode);
-        snprintf(message, sizeof(message) + 86,
-                 "HTTP/0.9 200 OK\nContent-Type: text/html\nContent-Length: %ld\n\n%s",
+        snprintf(body, sizeof(body), "%s", htmlCode);
+        snprintf(message, sizeof(message),
+                 "HTTP/0.9 200 OK\n"
+                 "Content-Type: text/html\n"
+                 "Content-Length: %lu\n\n%s",
                  strlen(body), body);
 
         // Send response
