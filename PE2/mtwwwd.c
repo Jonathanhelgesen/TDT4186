@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
-#include <sem.h>
+#include "sem.h"
 
 #define MAXSIZE (8092 * 1024)
 #define PORT 8000
