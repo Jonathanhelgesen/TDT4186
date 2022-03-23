@@ -1,3 +1,4 @@
+#include "sem.h"
 #ifndef ____BBUFFER___H___
 #define ____BBUFFER___H___
 
@@ -14,6 +15,16 @@
  */
 
 typedef struct BNDBUF BNDBUF;
+
+struct BNDBUF {
+    int *mem_start;
+    int size;
+    int *head;
+    int *tail;
+    SEM *count;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+};
 
 /* Creates a new Bounded Buffer. 
  *
@@ -59,7 +70,7 @@ void bb_del(BNDBUF *bb);
  * the int element
  */
 
-int  bb_get(BNDBUF *bb);
+int bb_get(BNDBUF *bb);
 
 /* Add an element to the bounded buffer. 
  *

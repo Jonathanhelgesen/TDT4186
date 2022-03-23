@@ -14,6 +14,12 @@
  */
 typedef struct SEM SEM;
 
+struct SEM
+{
+    int val;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+};
 /* Creates a new semaphore.
  *
  * This function creates a new semaphore. If an error occurs during the 
