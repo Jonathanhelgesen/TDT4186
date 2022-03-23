@@ -45,12 +45,13 @@ void bb_add(BNDBUF *bb, int fd)
 {
 
     pthread_mutex_lock(&(bb->lock));
-    while (bb->count > bb->size)
+    while (bb->count->val > bb->size)
         pthread_cond_wait(&(bb->cond), &(bb->lock));
 
     if (++bb->tail >= (bb->mem_start + bb->size))
         bb->tail = bb->mem_start;
-
+    *(bb->tail) = fd;
+    
     pthread_mutex_unlock(&(bb->lock));
     V(bb->count);
 }

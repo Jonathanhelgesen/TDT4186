@@ -9,37 +9,40 @@ void *test2();
 
 int main() {
 
-    int a = 7;
 
-    if (++a >= 8) {
-        a = 6;
-    }
+   pthread_t thread1, thread2;
 
-    printf("%d", a);
+   BNDBUF *buf = bb_init(5);
 
-//    pthread_t thread1, thread2;
+   pthread_create( &thread1, NULL, test1, buf);
+   pthread_create( &thread2, NULL, test2, buf);
+   pthread_join( thread1, NULL);
+   pthread_join( thread2, NULL);
 
-//    SEM *sem = sem_init(0);
+   bb_del(buf);
 
-//    pthread_create( &thread1, NULL, test1, sem);
-//    pthread_create( &thread2, NULL, test2, sem);
-//    pthread_join( thread1, NULL);
-//    pthread_join( thread2, NULL);
-
-//    sem_del(sem);
-
-//    return 0;
+   return 0;
 }
 
-void *test1(SEM *sem)
+void *test1(BNDBUF *buf)
 {
-    printf("Thread 1 test, with input %d\n", sem->val);
-    P(sem);
+    for (int i = 0; i < 7; i++)
+    {
+        printf("Thread 1 adding %d to buffer\n", i);
+        bb_add(buf, i);
+    }
+    
     
 }
 
-void *test2(SEM *sem)
+void *test2(BNDBUF *buf)
 {
-    printf("Thread 2 test\n");
-    V(sem);
+    for (int i = 0; i < 5; i++)
+    {
+        printf("Thread 2 getting from buffer\n");
+        int val = bb_get(buf);
+        printf("Got number %d\n", val);
+    }
+    
+
 }
