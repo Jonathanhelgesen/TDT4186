@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <pthread.h>
 #include "bbuffer.h"
 #include "sem.h"
@@ -35,6 +36,8 @@ int bb_get(BNDBUF *bb)
     if (++bb->head >= (bb->mem_start + bb->size))
         bb->head = bb->mem_start;
 
+    printf("Head pointing at %p\n", bb->head);
+
     pthread_cond_signal(&(bb->cond));
     pthread_mutex_unlock(&(bb->lock));
 
@@ -45,13 +48,15 @@ void bb_add(BNDBUF *bb, int fd)
 {
 
     pthread_mutex_lock(&(bb->lock));
-    while (bb->count->val > bb->size)
+    while (bb->count->val >= bb->size)
         pthread_cond_wait(&(bb->cond), &(bb->lock));
 
     if (++bb->tail >= (bb->mem_start + bb->size))
         bb->tail = bb->mem_start;
     *(bb->tail) = fd;
-    
+
+    printf("Tail pointing at %p\n", bb->tail);
+
     pthread_mutex_unlock(&(bb->lock));
     V(bb->count);
 }
