@@ -26,7 +26,7 @@ int main() {
 
 void *test1(BNDBUF *buf)
 {
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 3; i++)
     {
         printf("Thread 1 adding %d to buffer\n", i);
         bb_add(buf, i);
@@ -37,7 +37,7 @@ void *test1(BNDBUF *buf)
 
 void *test2(BNDBUF *buf)
 {
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 8; i++)
     {
         printf("Thread 2 getting from buffer\n");
         int val = bb_get(buf);

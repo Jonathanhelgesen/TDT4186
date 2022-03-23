@@ -33,7 +33,7 @@ int bb_get(BNDBUF *bb)
     pthread_mutex_lock(&(bb->lock));
 
     int value = *(bb->head);
-    if (++bb->head >= (bb->mem_start + bb->size))
+    if (++bb->head > (bb->mem_start + bb->size))
         bb->head = bb->mem_start;
 
     printf("Head pointing at %p\n", bb->head);
@@ -51,9 +51,9 @@ void bb_add(BNDBUF *bb, int fd)
     while (bb->count->val >= bb->size)
         pthread_cond_wait(&(bb->cond), &(bb->lock));
 
-    if (++bb->tail >= (bb->mem_start + bb->size))
-        bb->tail = bb->mem_start;
     *(bb->tail) = fd;
+    if (++bb->tail > (bb->mem_start + bb->size))
+        bb->tail = bb->mem_start;
 
     printf("Tail pointing at %p\n", bb->tail);
 
