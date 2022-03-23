@@ -5,12 +5,20 @@
 #include "sem.h"
 #include "bbuffer.h"
 
+typedef struct SEM // Burde unngå å definere denne to steder...
+{
+    int count;
+    pthread_mutex_t *mutex;
+    pthread_cond_t *cv; // Conditional value
+} SEM;
+
 typedef struct BNDBUF
 {
     pthread_mutex_t *lock;
-    SEM *empty, *full;
+    SEM *empty;
+    SEM *full;      // Used for checking if the buffer is full/empty
     int *fds;               // File descriptors
-    int position;           // Keeps track the start, end and total number of entries in buffer
+    int position;   // Keeping track of positions and size of buffer
 } BNDBUF;
 
 /* Creates a new Bounded Buffer.
@@ -107,15 +115,19 @@ void bb_add(BNDBUF *bb, int fd)
 {
     // Make empty-semaphore wait
     P(bb->empty);
+
     pthread_mutex_lock(bb->lock);
     // Entering critical section
+
+    // conditional while løkke som gjør at den venter til det er plass i bufferen her?
+
     bb->fds[bb->position] = fd;
     bb->position++;
     pthread_mutex_unlock(bb->lock);
-    printf("Added %d\n", fd);
     // Send signal to full-semaphore
     V(bb->full);
-    printf("Lengde på buffer: %d\n", bb->position);
+
+    printf("Added %d\n", fd);
 }
 
 /* Retrieve an element from the bounded buffer.
@@ -141,10 +153,10 @@ int bb_get(BNDBUF *bb)
     int fd = bb->fds[bb->position - 1];
     bb->position--;
     pthread_mutex_unlock(bb->lock);
+
     // Send signal to empty-semaphore
     V(bb->empty);
     printf("Got %d\n", fd);
-    printf("Lengde på buffer: %d\n", bb->position);
     return fd;
 }
 
@@ -168,30 +180,51 @@ void *parse_bb_get(void *pbb)
 
 int main()
 {
-    BNDBUF *bb = bb_init(10);
+    BNDBUF *bb = bb_init(4);
     pthread_mutex_t mutex;
+    // struct readThreadParams r1;
+    // r1.bb = bb;
+    // r1.fd = 1;
+    // parse_bb_add((void*) &r1);
+    // struct readThreadParams r2;
+    // r2.bb = bb;
+    // r2.fd = 2;
+    // parse_bb_add((void*) &r2);
+    // parse_bb_get((void*) bb);
+    // struct readThreadParams r3;
+    // r3.bb = bb;
+    // r3.fd = 3;
+    // parse_bb_add((void*) &r3);
+    // struct readThreadParams r4;
+    // r4.bb = bb;
+    // r4.fd = 4;
+    // parse_bb_add((void*) &r4);
+    // parse_bb_get(bb);
+    // parse_bb_get(bb);
+
+    //sleep(10);
+
     pthread_mutex_init(&mutex, NULL);
-    int THREAD_NUM = 8;
+    int THREAD_NUM = 16;
     pthread_t th[THREAD_NUM];
     int numbers[THREAD_NUM];
     int i;
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < THREAD_NUM; i++) {
         numbers[i] = i * 10;
     }
 
     for (i = 0; i < THREAD_NUM; i++)
     {
+        pthread_mutex_lock(&mutex);
         if (i % 2 == 0 || i % 3 == 0)
         {
             struct readThreadParams readParams;
             readParams.bb = bb;
             readParams.fd = numbers[i];
-            pthread_mutex_lock(&mutex);
             if (pthread_create(&th[i], NULL, &parse_bb_add, &readParams) != 0)
             {
                 perror("Failed to create thread");
             }
-            pthread_mutex_unlock(&mutex);
             
         }
         else
@@ -201,8 +234,9 @@ int main()
                 perror("Failed to create thread");
             }
         }
+        pthread_mutex_unlock(&mutex);
     }
-    for (i = 0; i < 100; i++)
+    for (i = 0; i < THREAD_NUM; i++)
     {
         if (pthread_join(th[i], NULL) != 0)
         {

@@ -6,7 +6,7 @@
 
 typedef struct SEM
 {
-    int count, waiting; // Trenger man waiting/wakeups? Ser det er implementert noen steder.
+    int count;
     pthread_mutex_t *mutex;
     pthread_cond_t *cv; // Conditional value
 }SEM;
@@ -108,15 +108,14 @@ int sem_del(SEM *sem)
      *
      * sem           handle of the semaphore to decrement
      */
-    void P(SEM * sem)
+    void P(SEM* sem)
     {
         pthread_mutex_lock(sem->mutex);
-        sem->count--;
-
         while (sem->count < 0)
         {
             pthread_cond_wait(sem->cv, sem->mutex);
         }
+        sem->count--;
         pthread_cond_signal(sem->cv);
         pthread_mutex_unlock(sem->mutex);
     }
