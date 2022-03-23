@@ -5,8 +5,8 @@
 struct BNDBUF {
     int *mem_start;
     int *mem_end;
-    int *data_start;
-    int *data_end;
+    int *head;
+    int *tail;
 };
 
 BNDBUF *bb_init(unsigned int size)
@@ -16,9 +16,10 @@ BNDBUF *bb_init(unsigned int size)
     buf->mem_start = (int *) malloc(size*sizeof(int));
     buf->mem_end = buf->mem_start + size;
 
-    buf->data_start = buf->mem_start;
-    buf->data_end = buf->mem_start;
+    buf->head = buf->mem_start;
+    buf->tail = buf->mem_start;
 
+    return buf;
 }
 
 void bb_del(BNDBUF *bb)
@@ -29,11 +30,11 @@ void bb_del(BNDBUF *bb)
 
 int bb_get(BNDBUF *bb) 
 {
-    int value = *(bb->data_start);
-    if (bb->data_start >= bb->mem_end) {
-        bb->data_start = bb->mem_start;
+    int value = *(bb->head);
+    if (bb->head >= bb->mem_end) {
+        bb->head = bb->mem_start;
     } else {
-        bb->data_start++;
+        bb->head++;
     }
 
     return value;
@@ -41,12 +42,12 @@ int bb_get(BNDBUF *bb)
 
 void bb_add(BNDBUF *bb, int fd)
 {
-    if (bb->data_end >= bb->mem_end) {
-        bb->data_end = bb->mem_start;
+    if (bb->tail >= bb->mem_end) {
+        bb->tail = bb->mem_start;
     } else {
-        bb->data_end++;
+        bb->tail++;
     }
     
-    *(bb->data_end) = fd;
+    *(bb->tail) = fd;
 }
 
