@@ -9,9 +9,8 @@ SEM *sem_init(int initVal)
     s = malloc(sizeof(SEM));
     s->val = initVal;
 
-    pthread_mutex_init(&(s->cond_mutex), NULL);
-    pthread_mutex_init(&(s->count_mutex), NULL);
-    pthread_cond_init(&(s->cond_condition), NULL);
+    pthread_mutex_init(&(s->lock), NULL);
+    pthread_cond_init(&(s->cond), NULL);
 
     return s;
 }
@@ -26,27 +25,19 @@ int sem_del(SEM *sem)
 
 void P(SEM *sem)
 {
-    pthread_mutex_lock(&(sem->cond_mutex));
+    pthread_mutex_lock(&(sem->lock));
     while (sem->val <= 0)
-    {
-        pthread_cond_wait(&(sem->cond_condition), &(sem->cond_mutex));
-    }
-    pthread_mutex_unlock(&(sem->cond_mutex));
-
-    pthread_mutex_lock(&(sem->count_mutex));
+        pthread_cond_wait(&(sem->cond), &(sem->lock));
     sem->val--;
     printf("Decrementing semaphore value, value: %d\n", sem->val);
-    pthread_mutex_unlock(&(sem->count_mutex));
+    pthread_mutex_unlock(&(sem->lock));
 }
 
 void V(SEM *sem)
 {
-    pthread_mutex_lock(&(sem->count_mutex));
+    pthread_mutex_lock(&(sem->lock));
     sem->val++;
     printf("Incrementing semaphore value, value: %d\n", sem->val);
-    pthread_mutex_unlock(&(sem->count_mutex));
-
-    pthread_mutex_lock(&(sem->cond_mutex));
-    pthread_cond_signal(&(sem->cond_condition));
-    pthread_mutex_unlock(&(sem->cond_mutex));
+    pthread_cond_signal(&(sem->cond));
+    pthread_mutex_unlock(&(sem->lock));
 }

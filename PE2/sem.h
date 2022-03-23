@@ -17,9 +17,8 @@ typedef struct SEM SEM;
 struct SEM
 {
     int val;
-    pthread_mutex_t count_mutex;
-    pthread_mutex_t cond_mutex;
-    pthread_cond_t cond_condition;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
 };
 /* Creates a new semaphore.
  *

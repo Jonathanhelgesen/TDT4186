@@ -29,11 +29,7 @@ int bb_get(BNDBUF *bb)
     int value = *(bb->head);
 
     pthread_mutex_lock(&(bb->mutex));
-    if (bb->head >= (bb->mem_start + bb->size)) {
-        bb->head = bb->mem_start;
-    } else {
-        bb->head++;
-    }
+    bb->head = (bb->head++) % bb->size;
     pthread_mutex_unlock(&(bb->mutex));
 
     return value;
@@ -41,9 +37,10 @@ int bb_get(BNDBUF *bb)
 
 void bb_add(BNDBUF *bb, int fd)
 {
-    if (bb->count >= bb->size) {
+    if (bb->count > bb->size) {
 
-    }    
+    }
     V(bb->count);
+
 }
 
