@@ -11,7 +11,7 @@ int main() {
 
    pthread_t thread1, thread2;
 
-   SEM *sem = sem_init(5);
+   SEM *sem = sem_init(0);
 
    pthread_create( &thread1, NULL, test1, sem);
    pthread_create( &thread2, NULL, test2, sem);
