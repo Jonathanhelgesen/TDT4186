@@ -6,11 +6,13 @@ BNDBUF *bb_init(unsigned int size)
 {
 
     BNDBUF *buf = NULL;
+    buf = malloc(sizeof(BNDBUF));
+
     buf->mem_start = (int *) malloc(size*sizeof(int));
     buf->mem_end = buf->mem_start + size;
 
     buf->head = buf->mem_start;
-    buf->tail = buf->mem_start;
+    buf->count = sem_init(0);
 
     return buf;
 }

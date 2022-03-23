@@ -20,6 +20,7 @@ struct BNDBUF {
     int *mem_end;
     int *head;
     int *tail;
+    SEM *count;
 };
 
 /* Creates a new Bounded Buffer. 
