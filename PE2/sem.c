@@ -53,5 +53,5 @@ void V(SEM *sem)
     pthread_mutex_lock(&(sem->count_mutex));
     sem->val++;
     printf("Incrementing semaphore value, value: %d\n", sem->val);
-    pthread_mutex_unlock(&(sem->count_mutex))
+    pthread_mutex_unlock(&(sem->count_mutex));
 }
