@@ -17,10 +17,11 @@ typedef struct BNDBUF BNDBUF;
 
 struct BNDBUF {
     int *mem_start;
-    int *mem_end;
+    int size;
     int *head;
     int *tail;
     SEM *count;
+    pthread_mutex_t mutex;
 };
 
 /* Creates a new Bounded Buffer. 

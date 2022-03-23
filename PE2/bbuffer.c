@@ -9,9 +9,9 @@ BNDBUF *bb_init(unsigned int size)
     buf = malloc(sizeof(BNDBUF));
 
     buf->mem_start = (int *) malloc(size*sizeof(int));
-    buf->mem_end = buf->mem_start + size;
+    buf->size = size;
 
-    buf->head = buf->mem_start;
+    buf->head = sem_init(buf->mem_start);
     buf->count = sem_init(0);
 
     return buf;
@@ -25,24 +25,25 @@ void bb_del(BNDBUF *bb)
 
 int bb_get(BNDBUF *bb) 
 {
+    P(bb->count);
     int value = *(bb->head);
-    if (bb->head >= bb->mem_end) {
+
+    pthread_mutex_lock(&(bb->mutex));
+    if (bb->head >= (bb->mem_start + bb->size)) {
         bb->head = bb->mem_start;
     } else {
         bb->head++;
     }
+    pthread_mutex_unlock(&(bb->mutex));
 
     return value;
 }
 
 void bb_add(BNDBUF *bb, int fd)
 {
-    if (bb->tail >= bb->mem_end) {
-        bb->tail = bb->mem_start;
-    } else {
-        bb->tail++;
-    }
-    
-    *(bb->tail) = fd;
+    if (bb->count >= bb->size) {
+
+    }    
+    V(bb->count);
 }
 
