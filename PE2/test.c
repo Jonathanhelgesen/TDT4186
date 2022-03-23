@@ -9,18 +9,26 @@ void *test2();
 
 int main() {
 
-   pthread_t thread1, thread2;
+    int a = 7;
 
-   SEM *sem = sem_init(0);
+    if (++a >= 8) {
+        a = 6;
+    }
 
-   pthread_create( &thread1, NULL, test1, sem);
-   pthread_create( &thread2, NULL, test2, sem);
-   pthread_join( thread1, NULL);
-   pthread_join( thread2, NULL);
+    printf("%d", a);
 
-   sem_del(sem);
+//    pthread_t thread1, thread2;
 
-   return 0;
+//    SEM *sem = sem_init(0);
+
+//    pthread_create( &thread1, NULL, test1, sem);
+//    pthread_create( &thread2, NULL, test2, sem);
+//    pthread_join( thread1, NULL);
+//    pthread_join( thread2, NULL);
+
+//    sem_del(sem);
+
+//    return 0;
 }
 
 void *test1(SEM *sem)

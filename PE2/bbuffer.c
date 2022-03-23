@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 #include "bbuffer.h"
 #include "sem.h"
 
@@ -11,7 +12,9 @@ BNDBUF *bb_init(unsigned int size)
     buf->mem_start = (int *) malloc(size*sizeof(int));
     buf->size = size;
 
-    buf->head = sem_init(buf->mem_start);
+
+    buf->head = buf->mem_start;
+    buf->tail = buf->mem_start;
     buf->count = sem_init(0);
 
     return buf;
@@ -26,21 +29,29 @@ void bb_del(BNDBUF *bb)
 int bb_get(BNDBUF *bb) 
 {
     P(bb->count);
-    int value = *(bb->head);
+    pthread_mutex_lock(&(bb->lock));
 
-    pthread_mutex_lock(&(bb->mutex));
-    bb->head = (bb->head++) % bb->size;
-    pthread_mutex_unlock(&(bb->mutex));
+    int value = *(bb->head);
+    if (++bb->head >= (bb->mem_start + bb->size))
+        bb->head = bb->mem_start;
+
+    pthread_cond_signal(&(bb->cond));
+    pthread_mutex_unlock(&(bb->lock));
 
     return value;
 }
 
 void bb_add(BNDBUF *bb, int fd)
 {
-    if (bb->count > bb->size) {
 
-    }
+    pthread_mutex_lock(&(bb->lock));
+    while (bb->count > bb->size)
+        pthread_cond_wait(&(bb->cond), &(bb->lock));
+
+    if (++bb->tail >= (bb->mem_start + bb->size))
+        bb->tail = bb->mem_start;
+
+    pthread_mutex_unlock(&(bb->lock));
     V(bb->count);
-
 }
 

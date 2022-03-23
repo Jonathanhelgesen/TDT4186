@@ -21,7 +21,8 @@ struct BNDBUF {
     int *head;
     int *tail;
     SEM *count;
-    pthread_mutex_t mutex;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
 };
 
 /* Creates a new Bounded Buffer. 
