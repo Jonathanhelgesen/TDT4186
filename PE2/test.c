@@ -1,9 +1,11 @@
-#include "bbuffer.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
 #include "sem.h"
-#include "pthread.h"
+#include "bbuffer.h"
 
-void *test1(SEM* sem);
-void *test2(SEM* sem);
+void *test1();
+void *test2();
 
 int main() {
 
@@ -21,10 +23,13 @@ int main() {
 
 void *test1(SEM *sem)
 {
+    printf("Thread 1 test, with input %d\n", sem->val);
     P(sem);
+    
 }
 
 void *test2(SEM *sem)
 {
+    printf("Thread 2 test\n");
     V(sem);
 }

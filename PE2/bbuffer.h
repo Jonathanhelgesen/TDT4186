@@ -15,6 +15,13 @@
 
 typedef struct BNDBUF BNDBUF;
 
+struct BNDBUF {
+    int *mem_start;
+    int *mem_end;
+    int *head;
+    int *tail;
+};
+
 /* Creates a new Bounded Buffer. 
  *
  * This function creates a new bounded buffer and all the helper data 

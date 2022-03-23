@@ -3,20 +3,12 @@
 #include <pthread.h>
 #include "sem.h"
 
-struct SEM
-{
-    int val;
-    pthread_mutex_t count_mutex;
-    pthread_mutex_t cond_mutex;
-    pthread_cond_t cond_condition;
-};
-
 SEM *sem_init(int initVal)
 {
     SEM *s = NULL;
-    s = malloc(sizeof(s));
+    s = malloc(sizeof(SEM));
     s->val = initVal;
-    
+
     pthread_mutex_init(&(s->cond_mutex), NULL);
     pthread_mutex_init(&(s->count_mutex), NULL);
     pthread_cond_init(&(s->cond_condition), NULL);

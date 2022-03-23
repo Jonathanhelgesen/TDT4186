@@ -2,13 +2,6 @@
 #include "bbuffer.h"
 #include "sem.h"
 
-struct BNDBUF {
-    int *mem_start;
-    int *mem_end;
-    int *head;
-    int *tail;
-};
-
 BNDBUF *bb_init(unsigned int size)
 {
 
