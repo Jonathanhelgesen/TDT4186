@@ -29,7 +29,7 @@ void P(SEM *sem)
     while (sem->val <= 0)
         pthread_cond_wait(&(sem->cond), &(sem->lock));
     sem->val--;
-    printf("Decrementing semaphore value, value: %d\n", sem->val);
+    // printf("Decrementing semaphore value, value: %d\n", sem->val);
     pthread_mutex_unlock(&(sem->lock));
 }
 
@@ -37,7 +37,7 @@ void V(SEM *sem)
 {
     pthread_mutex_lock(&(sem->lock));
     sem->val++;
-    printf("Incrementing semaphore value, value: %d\n", sem->val);
+    // printf("Incrementing semaphore value, value: %d\n", sem->val);
     pthread_cond_signal(&(sem->cond));
     pthread_mutex_unlock(&(sem->lock));
 }
