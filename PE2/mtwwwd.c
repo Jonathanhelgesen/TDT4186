@@ -47,44 +47,15 @@ void getHtml(char *path, char text[])
     strcat(text, responseData);
 }
 
-int main()
-{
 
-    // File descriptors
-    int socket_fd, new_socket_fd;
+void *consumer() {
 
-    socklen_t client_len;
-    struct sockaddr_in server_address, client_address;
-    int n;
-    socket_fd = socket(PF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0)
-    {
-        error("ERROR opening socket");
-    }
+    int socket_fd;
 
-    // Define the address
-    bzero((char *)&server_address, sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = INADDR_ANY;
-    server_address.sin_port = htons(PORT);
-
-    if (bind(socket_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
-    {
-        error("ERROR on binding");
-    }
-
-    // Listen for incoming requests
-    if ((listen(socket_fd, 10)) < 0)
-    {
-        error("ERROR on listen");
-    }
-
-    char htmlCode[300];
-    char path[50];
-
-    // Start main loop
     while (1)
     {
+
+
 
         client_len = sizeof(client_address);
 
@@ -133,4 +104,51 @@ int main()
         // Close the connection to client
         close(new_socket_fd);
     }
+
+}
+
+int main()
+{
+
+    // File descriptors
+    int socket_fd, new_socket_fd;
+
+    socklen_t client_len;
+    struct sockaddr_in server_address, client_address;
+    int n;
+    socket_fd = socket(PF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0)
+    {
+        error("ERROR opening socket");
+    }
+
+    // Define the address
+    bzero((char *)&server_address, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = INADDR_ANY;
+    server_address.sin_port = htons(PORT);
+
+    if (bind(socket_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
+    {
+        error("ERROR on binding");
+    }
+
+    // Listen for incoming requests
+    if ((listen(socket_fd, 10)) < 0)
+    {
+        error("ERROR on listen");
+    }
+
+    char htmlCode[300];
+    char path[50];
+
+    // Start main loop
+
+
+    pthread_t thread;
+
+    pthread_create( &thread, NULL, &consumer, NULL);
+    pthread_join(thread, NULL);
+
+    return 0;
 }
