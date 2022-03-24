@@ -82,10 +82,12 @@ void *worker(BNDBUF *buf) {
 
     strcpy(path, parseRequest(buffer));
 
-
     // Compiler error (clang): 'continue' statemtn not in loop statement
-    // if (strstr(path, "favicon") != NULL)
-    //     continue;
+    if (strstr(path, "favicon") != NULL) {
+        printf("[favicon-request ignored]\n\n");
+        close(socket_fd);
+        return NULL;
+    }
 
     getHtml(path, htmlCode);
 
