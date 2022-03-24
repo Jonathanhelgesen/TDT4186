@@ -11,9 +11,9 @@
 #include "bbuffer.h"
 
 #define MAXSIZE (8092 * 1024)
-#define PORT 8000
-#define THREADS 4
-#define BUFSLOT 10
+// #define PORT 8000
+// #define THREADS 4
+// #define BUFSLOT 10
 
 char body[MAXSIZE], message[MAXSIZE], buffer[MAXSIZE];
 
@@ -115,15 +115,13 @@ void signal_callback(int signum) {
     exit(signum);
 }
 
-int main()
+int main(int argc, char **argv)
 {
 
-    // char text[300];
-    // bzero(text, sizeof(text));
-
-    // getHtml("doc/hello2.html", text);
-
-    // printf("%s", text);
+    const char *root_dir = argv[1];
+    const int PORT = atoi(argv[2]);
+    const int THREADS = atoi(argv[3]);
+    const int BUFSLOT = atoi(argv[4]);
 
     signal(SIGINT, signal_callback);
 
