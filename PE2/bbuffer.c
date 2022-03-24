@@ -7,7 +7,7 @@
 
 typedef struct SEM // Burde unngå å definere denne to steder...
 {
-    int count;
+    int count; // Trenger man waiting/wakeups? Ser det er implementert noen steder.
     pthread_mutex_t *mutex;
     pthread_cond_t *cv; // Conditional value
 } SEM;
@@ -15,10 +15,11 @@ typedef struct SEM // Burde unngå å definere denne to steder...
 typedef struct BNDBUF
 {
     pthread_mutex_t *lock;
+    pthread_cond_t *bufferCV;
     SEM *empty;
     SEM *full;      // Used for checking if the buffer is full/empty
     int *fds;               // File descriptors
-    int position;   // Keeping track of positions and size of buffer
+    int size, num_entries, next_add, next_get;     // Keeping track of positions and size of buffer
 } BNDBUF;
 
 /* Creates a new Bounded Buffer.
@@ -75,7 +76,13 @@ BNDBUF *bb_init(unsigned int size)
     bndbuf->empty = sem_init(size);
     bndbuf->full = sem_init(0);
     bndbuf->lock = lock;
-    bndbuf->position = 0;
+    //bndbuf->position = 0;
+    bndbuf->size = size;
+    bndbuf->next_add = 0;
+    bndbuf->next_get = 0;
+    bndbuf->num_entries = 0;
+    bndbuf->bufferCV = malloc(sizeof(pthread_cond_t));
+    pthread_cond_init(bndbuf->bufferCV, NULL);
     return bndbuf;
 }
 
@@ -118,11 +125,18 @@ void bb_add(BNDBUF *bb, int fd)
 
     pthread_mutex_lock(bb->lock);
     // Entering critical section
-
     // conditional while løkke som gjør at den venter til det er plass i bufferen her?
 
-    bb->fds[bb->position] = fd;
-    bb->position++;
+    while (bb->num_entries == bb->size){ //Tror ikke vi trenger cond var
+        pthread_cond_wait(bb->bufferCV, bb->lock);
+    }
+    bb->fds[bb->next_add] = fd;
+    bb->num_entries++;
+    bb->next_add++;
+    if (bb->next_add == bb->size) {
+        bb->next_add = 0;
+    }
+    pthread_cond_signal(bb->bufferCV);
     pthread_mutex_unlock(bb->lock);
     // Send signal to full-semaphore
     V(bb->full);
@@ -149,9 +163,18 @@ int bb_get(BNDBUF *bb)
     // Make full-semaphore wait
     P(bb->full);
     pthread_mutex_lock(bb->lock);
+
     // Entering critical section
-    int fd = bb->fds[bb->position - 1];
-    bb->position--;
+    while (bb->num_entries == 0){
+        pthread_cond_wait(bb->bufferCV, bb->lock);
+    }
+    int fd = bb->fds[bb->next_get];
+    bb->num_entries--;
+    bb->next_get++;
+    if (bb->next_get == bb->size) {
+        bb->next_get = 0;
+    }
+    pthread_cond_signal(bb->bufferCV);
     pthread_mutex_unlock(bb->lock);
 
     // Send signal to empty-semaphore
@@ -205,37 +228,46 @@ int main()
     //sleep(10);
 
     pthread_mutex_init(&mutex, NULL);
-    int THREAD_NUM = 16;
+    int THREAD_NUM = 8;
     pthread_t th[THREAD_NUM];
     int numbers[THREAD_NUM];
     int i;
     for (i = 0; i < THREAD_NUM; i++) {
         numbers[i] = i * 10;
     }
+    int counter = 0;
 
-    for (i = 0; i < THREAD_NUM; i++)
+    while (counter < THREAD_NUM - 1)
     {
         pthread_mutex_lock(&mutex);
-        if (i % 2 == 0 || i % 3 == 0)
+        struct readThreadParams readParams;
+        readParams.bb = bb;
+        readParams.fd = numbers[counter];
+        counter++;
+        pthread_mutex_unlock(&mutex);
+
+        if (counter % 2 == 0 || counter % 3 == 0)
         {
-            struct readThreadParams readParams;
-            readParams.bb = bb;
-            readParams.fd = numbers[i];
-            if (pthread_create(&th[i], NULL, &parse_bb_add, &readParams) != 0)
+            printf("counter in add at: %d\n", counter);
+
+            if (pthread_create(&th[counter-1], NULL, &parse_bb_add, &readParams) != 0)
             {
                 perror("Failed to create thread");
             }
-            
         }
         else
         {
-            if (pthread_create(&th[i], NULL, &parse_bb_get, bb) != 0)
+            printf("counter in get at: %d\n", counter);
+            if (pthread_create(&th[counter-1], NULL, &parse_bb_get, bb) != 0)
             {
                 perror("Failed to create thread");
             }
         }
-        pthread_mutex_unlock(&mutex);
     }
+
+
+
+
     for (i = 0; i < THREAD_NUM; i++)
     {
         if (pthread_join(th[i], NULL) != 0)

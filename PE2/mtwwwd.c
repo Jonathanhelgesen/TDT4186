@@ -6,8 +6,11 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
+#include "sem.h"
+#include "bbuffer.h"
 #define MAXSIZE (4096*1024)
-#define PORT 8080
+#define PORT 8000
 
 char body[MAXSIZE], message[MAXSIZE], buffer[MAXSIZE];
 
@@ -16,7 +19,7 @@ void error(const char *message) {
     }
 
 // Find path of requested file
-const char* parseRequest(char *request){
+const char* getPath(char *request){
     char *token;
     token = strtok(request, " ");
     bzero(&request, sizeof(&request));
@@ -39,18 +42,74 @@ void getHtml(char *path, char text[])
         strcat(responseData, line);
     }
     strcat(text, responseData);
+    fclose(htmlData);
 }
+
+
+void* handle_connection(void* client_socket_ptr){
+    int client_socket = *((int*) client_socket_ptr);
+    free(client_socket_ptr);
+    int n;
+    char htmlCode[300];
+    char path[30];
+
+    bzero(body, sizeof(body));
+    bzero(buffer, sizeof(buffer));
+    bzero(message, sizeof(message));
+    bzero(htmlCode, sizeof(htmlCode));
+
+    // Read the HTTP request
+    n = read(client_socket, buffer, sizeof(buffer) - 1);
+    if (n < 0) error("ERROR reading from socket");
+
+    // Ignore pre-flight requests
+    if (buffer[0] == '\0') {
+        printf("[Pre-flight request ignored]\n\n");
+        close(client_socket);
+        return NULL;
+    }
+
+    // Find the requested html code
+    printf("Request from client:\n%s\n", buffer);
+
+    strcpy(path, getPath(buffer));
+
+    if (strstr(path, "favicon") != NULL) {
+        printf("[favicon-request ignored]\n\n");
+        close(client_socket);
+        return NULL;
+    }
+
+    getHtml(path, htmlCode);
+
+    // Generate response
+    snprintf(body, sizeof(body) + 86, "%s", htmlCode);
+    snprintf(message, sizeof(message) + 86,
+        "HTTP/0.9 200 OK\nContent-Type: text/html\nContent-Length: %ld\n\n%s", 
+        strlen(body), body);
+        
+    // Send response
+    n = write(client_socket, message, strlen(message));
+        if (n < 0) error("ERROR writing to socket");
+        
+        // Close the connection to client
+        close(client_socket);
+        return NULL;
+    }
+
 
 int main(){
 
     // File descriptors
-    int socket_fd, new_socket_fd;
+    int server_socket_fd, client_socket_fd;
 
     socklen_t client_len;
     struct sockaddr_in server_address, client_address;
     int n;
-    socket_fd = socket(PF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0){
+
+    // Create socket, using TCP
+    server_socket_fd = socket(PF_INET, SOCK_STREAM, 0);
+    if (server_socket_fd < 0){
         error("ERROR opening socket");
     }
     
@@ -60,17 +119,15 @@ int main(){
     server_address.sin_addr.s_addr = INADDR_ANY;
     server_address.sin_port = htons(PORT);
 
-    if (bind(socket_fd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
+    // Bind socket to server address
+    if (bind(server_socket_fd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
         error("ERROR on binding");
     }
 
     // Listen for incoming requests
-    if((listen(socket_fd, 10)) < 0){
+    if((listen(server_socket_fd, 10)) < 0){
         error("ERROR on listen");
     }
-
-    char htmlCode[300];
-    char path[30];
 
 
     // Start main loop
@@ -79,47 +136,16 @@ int main(){
         client_len = sizeof(client_address);
 
         // Accept new request
-        new_socket_fd = accept(socket_fd, (struct sockaddr *) &client_address, &client_len);
-        if (new_socket_fd < 0) error("ERROR on accept");
+        client_socket_fd = accept(server_socket_fd, (struct sockaddr *) &client_address, &client_len);
+        if (client_socket_fd < 0) error("ERROR on accept");
 
-        bzero(body, sizeof(body));
-        bzero(buffer, sizeof(buffer));
-        bzero(message, sizeof(message));
-        bzero(htmlCode, sizeof(htmlCode));
-        bzero(path, sizeof(path));
+        //handle_connection(client_socket_fd);
 
-        // Read the HTTP request
-        n = read(new_socket_fd, buffer, sizeof(buffer) - 1);
-        if (n < 0) error("ERROR reading from socket");
+        pthread_t thread;
+        int* client_fd_ptr = malloc(sizeof(int));
+        *client_fd_ptr = client_socket_fd;
+        pthread_create(&thread, NULL, &handle_connection, client_fd_ptr);
 
-        // Ignore pre-flight requests
-        if (buffer[0] == '\0') {
-            continue;
-        }
-
-        // Find the requested html code
-        printf("Request from client:\n%s\n", buffer);
-
-        strcpy(path, parseRequest(buffer));
-
-        if (strstr(path, "favicon") != NULL) {
-            continue;
-        }
-
-        getHtml(path, htmlCode);
-
-        // Generate response
-        snprintf(body, sizeof(body) + 86, "%s", htmlCode);
-        snprintf(message, sizeof(message) + 86,
-            "HTTP/0.9 200 OK\nContent-Type: text/html\nContent-Length: %ld\n\n%s", 
-             strlen(body), body);
-        
-        // Send response
-        n = write(new_socket_fd, message, strlen(message));
-        if (n < 0) error("ERROR writing to socket");
-        
-        // Close the connection to client
-        close(new_socket_fd);
     }
 
 }
