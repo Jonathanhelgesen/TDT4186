@@ -6,10 +6,14 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include "sem.h"
+#include "bbuffer.h"
 
 #define MAXSIZE (8092 * 1024)
 #define PORT 8000
+#define THREADS 4
+#define BUFSLOT 10
 
 char body[MAXSIZE], message[MAXSIZE], buffer[MAXSIZE];
 
@@ -48,79 +52,73 @@ void getHtml(char *path, char text[])
 }
 
 
-void *consumer() {
+void *worker(BNDBUF *buf) {
 
-    int socket_fd;
+    int socket_fd = bb_get(buf);
 
-    while (1)
-    {
+    char htmlCode[300];
+    char path[50];
 
+    bzero(body, sizeof(body));
+    bzero(buffer, sizeof(buffer));
+    bzero(message, sizeof(message));
+    bzero(htmlCode, sizeof(htmlCode));
+    bzero(path, sizeof(path));
 
+    // Read the HTTP request
+    int n = read(socket_fd, buffer, sizeof(buffer) - 1);
+    if (n < 0)
+        error("ERROR reading from socket");
 
-        client_len = sizeof(client_address);
+    // Find the requested html code
+    printf("Request from client:\n%s\n", buffer);
 
-        // Accept new request
-        new_socket_fd = accept(socket_fd, (struct sockaddr *)&client_address, &client_len);
-        if (new_socket_fd < 0)
-            error("ERROR on accept");
-
-        bzero(body, sizeof(body));
-        bzero(buffer, sizeof(buffer));
-        bzero(message, sizeof(message));
-        bzero(htmlCode, sizeof(htmlCode));
-        bzero(path, sizeof(path));
-
-        // Read the HTTP request
-        n = read(new_socket_fd, buffer, sizeof(buffer) - 1);
-        if (n < 0)
-            error("ERROR reading from socket");
-
-        // Find the requested html code
-        printf("Request from client:\n%s\n", buffer);
-
-        strcpy(path, parseRequest(buffer));
-
-        if (strstr(path, "favicon") != NULL)
-        {
-            continue;
-        }
-
-        getHtml(path, htmlCode);
+    strcpy(path, parseRequest(buffer));
 
 
-        // Generate response
-        snprintf(body, sizeof(body), "%s", htmlCode);
-        snprintf(message, sizeof(message),
-                 "HTTP/0.9 200 OK\n"
-                 "Content-Type: text/html\n"
-                 "Content-Length: %lu\n\n%s",
-                 strlen(body), body);
+    // Compiler error (clang): 'continue' statemtn not in loop statement
+    // if (strstr(path, "favicon") != NULL)
+    //     continue;
 
-        // Send response
-        n = write(new_socket_fd, message, strlen(message));
-        if (n < 0)
-            error("ERROR writing to socket");
+    getHtml(path, htmlCode);
 
-        // Close the connection to client
-        close(new_socket_fd);
-    }
 
+    // Generate response
+    snprintf(body, sizeof(body), "%s", htmlCode);
+    snprintf(message, sizeof(message),
+                "HTTP/0.9 200 OK\n"
+                "Content-Type: text/html\n"
+                "Content-Length: %lu\n\n%s",
+                strlen(body), body);
+
+    // Send response
+    n = write(socket_fd, message, strlen(message));
+    if (n < 0)
+        error("ERROR writing to socket");
+
+    // Close the connection to client
+    close(socket_fd);
+
+}
+
+void signal_callback(int signum) {
+    printf("Caught signal %d\n", signum);
+    exit(signum);
 }
 
 int main()
 {
 
-    // File descriptors
-    int socket_fd, new_socket_fd;
+    signal(SIGINT, signal_callback);
 
+    // File descriptors
+    int socket_fd;
     socklen_t client_len;
     struct sockaddr_in server_address, client_address;
-    int n;
+
     socket_fd = socket(PF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0)
-    {
         error("ERROR opening socket");
-    }
 
     // Define the address
     bzero((char *)&server_address, sizeof(server_address));
@@ -129,26 +127,37 @@ int main()
     server_address.sin_port = htons(PORT);
 
     if (bind(socket_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
-    {
         error("ERROR on binding");
-    }
 
     // Listen for incoming requests
     if ((listen(socket_fd, 10)) < 0)
-    {
         error("ERROR on listen");
-    }
-
-    char htmlCode[300];
-    char path[50];
-
-    // Start main loop
 
 
-    pthread_t thread;
+    BNDBUF *buf = bb_init(BUFSLOT);
+    pthread_t threads[THREADS];
 
-    pthread_create( &thread, NULL, &consumer, NULL);
-    pthread_join(thread, NULL);
+    int i = 0;
 
-    return 0;
+    while (1)
+    {
+        client_len = sizeof(client_address);
+
+        // Accept new request
+        int new_socket_fd = accept(socket_fd, (struct sockaddr *)&client_address, &client_len);
+        if (socket_fd < 0)
+            error("ERROR on accept");
+
+        bb_add(buf, new_socket_fd);
+
+        pthread_t thread = threads[i % THREADS];
+
+        pthread_create( &thread, NULL, worker, buf);
+        pthread_join(thread, NULL);
+
+        i++;
+    }    
+
+    bb_del(buf);
+    exit(0);
 }
