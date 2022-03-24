@@ -70,6 +70,13 @@ void *worker(BNDBUF *buf) {
     if (n < 0)
         error("ERROR reading from socket");
 
+    // Ignore pre-flight requests
+    if (buffer[0] == '\0') {
+        printf("[Pre-flight request ignored]\n\n");
+        close(socket_fd);
+        return NULL;
+    }
+
     // Find the requested html code
     printf("Request from client:\n%s\n", buffer);
 
@@ -108,6 +115,13 @@ void signal_callback(int signum) {
 
 int main()
 {
+
+    // char text[300];
+    // bzero(text, sizeof(text));
+
+    // getHtml("doc/hello2.html", text);
+
+    // printf("%s", text);
 
     signal(SIGINT, signal_callback);
 
