@@ -29,47 +29,60 @@ void printStatus(int status, char *args[])
     printf("] = %d\n", status);
 }
 
+void signalHandler(int sig)
+{
+    printf("Exiting shell");
+    exit(0);
+}
+
 int main()
 {
-    // get current working directory
-    char cwd[100];
-    getcwd(cwd, sizeof(cwd));
+    signal(SIGINT, signalHandler);
 
-    // print to terminal
-    printf("%s : ", cwd);
+    // avoid inf loop
+    int limiter = 0;
 
-    // take input
-    char input[100];
-    bzero(input, sizeof(input));
-    scanf("%[^\n]", input);
-
-    // read path and args
-    char *args[10];
-    bzero(args, sizeof(args));
-    parseArgs(input, args);
-
-    char *cmd = args[0];
-
-    // fork process
-    pid_t cpid;
-    if ((cpid = fork()) == 0)
+    while (limiter < 100)
     {
-        if (strcmp("cd", cmd) == 0) {
+        // get current working directory
+        char cwd[100];
+        getcwd(cwd, sizeof(cwd));
+
+        printf("%s : ", cwd);
+
+        // take input
+        char input[100];
+        bzero(input, sizeof(input));
+        scanf("%[^\n]", input);
+        getchar(); // stops infinite loop bug with scanf
+
+        // read path and args
+        char *args[10];
+        bzero(args, sizeof(args));
+        parseArgs(input, args);
+
+        char *cmd = args[0];
+
+        // fork process
+
+        if (strcmp("cd", cmd) == 0)
+        {
             chdir(args[1]);
-
-            // print to check working
-            // char s[100];
-            // printf("%s\n", getcwd(s, 100));
-
-        } else {
-            execv(cmd, args);
         }
+        else
+        {
+            pid_t cpid;
 
-        exit(0);
+            if ((cpid = fork()) == 0)
+            {
+                execv(cmd, args);
+                exit(0);
+            }
+
+            int status;
+            waitpid(cpid, &status, 0);
+            printStatus(status, args);
+        }
+        limiter++;
     }
-
-    int status;
-    waitpid(cpid, &status, 0);
-
-    printStatus(status, args);
 }
