@@ -48,13 +48,23 @@ int main()
     bzero(args, sizeof(args));
     parseArgs(input, args);
 
-    char *path = args[0];
+    char *cmd = args[0];
 
     // fork process
     pid_t cpid;
     if ((cpid = fork()) == 0)
     {
-        execv(path, args);
+        if (strcmp("cd", cmd) == 0) {
+            chdir(args[1]);
+
+            // print to check working
+            // char s[100];
+            // printf("%s\n", getcwd(s, 100));
+
+        } else {
+            execv(cmd, args);
+        }
+
         exit(0);
     }
 
