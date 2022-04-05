@@ -19,7 +19,7 @@ void parseArgs(char input[], char *args[])
 
 void printStatus(int status, char *args[])
 {
-    printf("Exit status [");
+    printf("Exit status [ ");
     int i = 0;
     while (args[i] != NULL)
     {
@@ -50,8 +50,8 @@ int main()
 
     char *path = args[0];
 
+    // fork process
     pid_t cpid;
-
     if ((cpid = fork()) == 0)
     {
         execv(path, args);
