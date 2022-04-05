@@ -37,6 +37,8 @@ void signalHandler(int sig)
 
 int main()
 {
+    // handles ctrl+c
+    // TODO: Handle ctrl+d (Not signal but sends EOF to stdin)
     signal(SIGINT, signalHandler);
 
     while (1)
