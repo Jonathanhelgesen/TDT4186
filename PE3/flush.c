@@ -39,10 +39,7 @@ int main()
 {
     signal(SIGINT, signalHandler);
 
-    // avoid inf loop
-    int limiter = 0;
-
-    while (limiter < 100)
+    while (1)
     {
         // get current working directory
         char cwd[100];
@@ -63,14 +60,13 @@ int main()
 
         char *cmd = args[0];
 
-        // fork process
-
         if (strcmp("cd", cmd) == 0)
         {
             chdir(args[1]);
         }
         else
         {
+            // fork process
             pid_t cpid;
 
             if ((cpid = fork()) == 0)
@@ -83,6 +79,5 @@ int main()
             waitpid(cpid, &status, 0);
             printStatus(status, args);
         }
-        limiter++;
     }
 }
