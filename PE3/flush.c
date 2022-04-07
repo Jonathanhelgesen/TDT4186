@@ -20,14 +20,22 @@ void parseArgs(char input[], char *args[])
 
 void printStatus(int status, char *args[])
 {
-    printf("Exit status [ ");
-    int i = 0;
-    while (args[i] != NULL)
-    {
-        printf("%s ", args[i]);
-        i++;
+    printf("Exit status");
+
+    if (args != NULL) {
+        int i = 0;
+        printf(" [ ");
+        while (args[i] != NULL)
+        {
+            printf("%s ", args[i]);
+            i++;
+        }
+        printf("] =");
+    } else {
+        printf(": ");
     }
-    printf("] = %d\n", status);
+
+     printf("%d\n", status);
 }
 
 struct redirect {
@@ -123,6 +131,7 @@ int ioRedirect(char *args[])
         pclose(processout);
         fclose(filein);
 
+        return 1;
     }     
 
     return 0;
@@ -167,33 +176,25 @@ int main()
         {
             chdir(args[1]);
         }
-        else
-        {
+        else if (ioRedirect(args)) {
+            printStatus(0, NULL);
+        }
+        else {
+        
+            // fork process
+            pid_t cpid;
 
-            ioRedirect(args);
+            if ((cpid = fork()) == 0)
+            {
+                // filedescriptor of output, 0 -> stdout
 
-            // // fork process
-            // pid_t cpid;
+                execv(cmd, args);
+                exit(0);
+            }
 
-            // if ((cpid = fork()) == 0)
-            // {
-            //     // filedescriptor of output, 0 -> stdout
-
-            //     if (ioRedirect(args) == 0)
-            //     {
-            //         printf("Redirect");
-            //     }
-            //     else
-            //     {
-            //         execv(cmd, args);
-            //     }
-
-            //     exit(0);
-            // }
-
-            // int status;
-            // waitpid(cpid, &status, 0);
-            // printStatus(status, args);
+            int status;
+            waitpid(cpid, &status, 0);
+            printStatus(status, args);
         }
     }
 }
