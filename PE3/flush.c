@@ -58,6 +58,16 @@ void join(char str[], char* array[]) {
         }
 }
 
+// Can parseArgs and parseRedirect be done in one and the same function ??
+// Misunderstood task. Redirect cannot pass from file to command,
+// and not handle chained redirects
+// rewrite to parse
+
+// command > file           : OK
+// command < file           : TODO
+// command < file > file    : TODO 
+
+// always command as first argument
 struct redirect parseRedirect(char* args[]) {
 
     struct redirect r;
@@ -103,7 +113,6 @@ struct redirect parseRedirect(char* args[]) {
 
 int ioRedirect(char *args[])
 {
-    // iterate over args to see if it contains '<' or '>' ??
 
     struct redirect redir = parseRedirect(args);
 
