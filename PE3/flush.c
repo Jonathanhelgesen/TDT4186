@@ -1,12 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-void parseArgs(char input[], char *args[])
+// Handle user input
+int parseArgs(char input[], char *args[])
 {
     char *token;
+    // Split input into arguments based on spaces
     token = strtok(input, " ");
 
     int i = 0;
@@ -16,187 +20,138 @@ void parseArgs(char input[], char *args[])
         token = strtok(NULL, " ");
         i++;
     }
+    return i;
 }
 
+// Prints status of the shell
 void printStatus(int status, char *args[])
 {
-    printf("Exit status");
-
-    if (args != NULL) {
-        int i = 0;
-        printf(" [ ");
-        while (args[i] != NULL)
-        {
-            printf("%s ", args[i]);
-            i++;
-        }
-        printf("] =");
-    } else {
-        printf(": ");
-    }
-
-     printf("%d\n", status);
-}
-
-struct redirect {
-    char symbol;
-    int symidx;
-    char *before[10];
-    char *after[10];
-    char cmd[50];
-    char output[50];
-};
-
-void join(char str[], char* array[]) {
-    strcpy(str, array[0]);
-
-        int i = 1;
-        while (array[i] != NULL) {
-            strcat(str, " ");
-            strcat(str, array[i]);
-            i++;
-        }
-}
-
-// Can parseArgs and parseRedirect be done in one and the same function ??
-// Misunderstood task. Redirect cannot pass from file to command,
-// and not handle chained redirects
-// rewrite to parse
-
-// command > file           : OK
-// command < file           : TODO
-// command < file > file    : TODO 
-
-// always command as first argument
-struct redirect parseRedirect(char* args[]) {
-
-    struct redirect r;
-    r.symbol = '\0';
-    bzero(r.before, sizeof(r.before));
-    bzero(r.after, sizeof(r.after));
-
+    printf("Exit status [ ");
     int i = 0;
     while (args[i] != NULL)
     {
-        if (*args[i] == '<')
-        {
-            r.symbol = '<';
-            r.symidx = i;
-        }
-        else if (*args[i] == '>')
-        {
-            r.symbol = '>';
-            r.symidx = i;
-        }
-        else if (r.symbol != '\0')
-        {
-            r.after[i - (r.symidx + 1)] = args[i];
-        }
-        else
-        {
-            r.before[i] = args[i];
-        }
+        printf("%s ", args[i]);
         i++;
     }
-
-    if (r.symbol == '>') {
-        join(r.cmd, r.before);
-        join(r.output, r.after);
-    } else if (r.symbol == '<') {
-        join(r.cmd, r.after);
-        join(r.output, r.before);
-    }
-
-    return r;
+    printf("] = %d\n", status);
 }
 
-
-int ioRedirect(char *args[])
+// Handles signals
+void signalHandler(int sig)
 {
+    printf("Exiting shell\n");
+    exit(0);
+}
 
-    struct redirect redir = parseRedirect(args);
-
-    if (redir.symbol != '\0') {
-
-        FILE *processout;
-        FILE *filein;
-
-        if ((processout = popen(redir.cmd, "r")) == NULL) {
-            fprintf(stderr,"Error popen with %s\n", redir.cmd);
-            exit(1);
+// Checks if "<" is an argument
+int check_input(char **arguments, char **input_file, int length) {
+    for(int i = 0; i < length; i++){
+        if(arguments[i][0] == '<'){
+            *input_file = arguments[i + 1];
+            // Reorganize arguments
+            for(int ii = i; arguments[ii + 2] != NULL; ii++){
+                arguments[ii] = arguments[ii + 2];
+            }
+            arguments[length - 1] = NULL;
+            arguments[length - 2] = NULL;
+            //Success
+            return 1;
         }
+    }
+    //Failure
+    return 0;
+}
 
-        if ((filein = fopen(redir.output, "w+")) == NULL) {
-            fprintf(stderr,"Error fopen with %s\n", redir.output);
-            pclose(processout);
-            exit(1);
+//Checks if ">" is an argument
+int check_output(char **arguments, char **output_file, int length){
+    for(int i = 0; i < length; i++){
+        if(arguments[i][0] == '>'){
+            *output_file = arguments[i + 1];
+            // Reorganize arguments
+            for(int ii = i; arguments[ii + 2] != NULL; ii++){
+                arguments[ii] = arguments[ii + 2];
+            }
+            arguments[length - 1] = NULL;
+            arguments[length - 2] = NULL;
+            //Success
+            return 1;
         }
-
-        int ch;
-        while ((ch = fgetc(processout)) != EOF) {
-            fputc(ch, filein);
-        }
-
-        pclose(processout);
-        fclose(filein);
-
-        return 1;
-    }     
-
+    }
+    //Failure
     return 0;
 }
 
 
-
-void signalHandler(int sig)
-{
-    printf("Exiting shell");
-    exit(0);
-}
-
 int main()
 {
     // handles ctrl+c
-    // TODO: Handle ctrl+d (Not signal but sends EOF to stdin)
     signal(SIGINT, signalHandler);
 
     while (1)
     {
+        int redirect_i, redirect_o;
+        char *input_file, *output_file, cwd[100];
+
         // get current working directory
-        char cwd[100];
+
         getcwd(cwd, sizeof(cwd));
 
+        // prints current working directory
         printf("%s : ", cwd);
 
         // take input
         char input[100];
         bzero(input, sizeof(input));
-        scanf("%[^\n]", input);
+        int flag;
+        flag = scanf("%[^\n]", input);
         getchar(); // stops infinite loop bug with scanf
+
+        // If scanf returns EOF, exit
+        if (flag == EOF) {
+            printf("Exiting shell\n");
+            exit(0);
+        }
+
+        // If input is empty, continue
+        if (input[0] == '\0') {
+            continue;
+        }
 
         // read path and args
         char *args[10];
         bzero(args, sizeof(args));
-        parseArgs(input, args);
+        int arg_count;
+        arg_count = parseArgs(input, args);
 
         char *cmd = args[0];
+
+        redirect_i = check_input(args, &input_file, arg_count);
+        if (redirect_i) {
+            arg_count -= 2;
+        }
+
+        redirect_o = check_output(args, &output_file, arg_count);
+        if (redirect_o) {
+            arg_count -= 2;
+        }
 
         if (strcmp("cd", cmd) == 0)
         {
             chdir(args[1]);
         }
-        else if (ioRedirect(args)) {
-            printStatus(0, NULL);
-        }
-        else {
-        
+        else
+        {
             // fork process
             pid_t cpid;
 
             if ((cpid = fork()) == 0)
             {
-                // filedescriptor of output, 0 -> stdout
-
+                if(redirect_i) {
+                    freopen(input_file, "r", stdin);
+                }
+                if(redirect_o) {
+                    freopen(output_file, "w+", stdout);
+                }
                 execv(cmd, args);
                 exit(0);
             }
