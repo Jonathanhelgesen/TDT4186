@@ -112,6 +112,27 @@ Node* add_node(Node **head, int pid, char* args){
     return *head;
 }
 
+// Handles terminated processes
+void update_nodes(Node* head){
+    if (head->pid != -1) {
+        // If linked list is not empty
+        Node* ptr = head;
+        while(ptr != NULL){
+            if(ptr->hasExited == 0){
+                int status;
+                if (waitpid(ptr->pid, &status, WNOHANG) == ptr->pid){
+                    if (WIFEXITED(status)) {
+                        int exitStatus = WEXITSTATUS(status);
+                        ptr->hasExited = 1;
+                        ptr->status = exitStatus;
+                    }
+                }
+            }
+            ptr = ptr->next;
+        }
+    }
+}
+
 
 int main()
 {
@@ -173,6 +194,23 @@ int main()
         if (strcmp("cd", cmd) == 0)
         {
             chdir(args[1]);
+        } 
+        else if (strcmp("jobs", cmd) == 0){
+            
+            update_nodes(head);
+
+            // Print terminated process with exit status
+            if (head->pid != -1){
+                printf("\n------------------  Status of running background processes  ------------------\n");
+                Node* ptr = head;
+                while (ptr != NULL) {
+                    if (ptr->hasExited == 0){
+                        printf("PID: %d, arguments: [ %s]\n", ptr->pid, ptr->args);
+                    }
+                    ptr = ptr->next;
+                }
+                printf("------------------------------------------------------------------------------\n\n");
+            }
         }
         else
         {
@@ -204,24 +242,7 @@ int main()
                 add_node(&head, cpid, strdup(commandLine));
             }
 
-            // Handle terminated processes
-            if (head->pid != -1) {
-                // If linked list is not empty
-                Node* ptr = head;
-                while(ptr != NULL){
-                    if(ptr->hasExited == 0){
-                        int status;
-                        if (waitpid(ptr->pid, &status, WNOHANG) == ptr->pid){
-                            if (WIFEXITED(status)) {
-                                int exitStatus = WEXITSTATUS(status);
-                                ptr->hasExited = 1;
-                                ptr->status = exitStatus;
-                            }
-                        }
-                    }
-                    ptr = ptr->next;
-                }
-            }
+            update_nodes(head);
 
             // Print terminated process with exit status
             if (head->pid != -1){
