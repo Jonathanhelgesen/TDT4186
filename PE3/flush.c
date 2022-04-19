@@ -226,7 +226,7 @@ int main()
                 if(redirect_o) {
                     output_stream = freopen(output_file, "w", stdout);
                 }
-                execv(cmd, args);
+                execvp(cmd, args);
                 if (input_stream != NULL) fclose(input_stream);
                 if (output_stream != NULL) fclose(output_stream);
                 exit(0);
